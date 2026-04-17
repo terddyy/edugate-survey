@@ -225,10 +225,10 @@ export function SurveyForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-5xl space-y-5 rounded-3xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-4 pb-28 shadow-sm sm:space-y-6 sm:p-6 sm:pb-28 md:p-8 md:pb-8"
+      className="w-full min-w-0 max-w-5xl space-y-5 overflow-x-hidden rounded-3xl border border-[var(--color-border-strong)] bg-[var(--color-surface)] p-4 pb-28 shadow-sm sm:space-y-6 sm:p-6 sm:pb-28 md:p-8 md:pb-8"
     >
       <header className="space-y-2 border-b border-[var(--color-border)] pb-5 sm:pb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-text)] sm:text-3xl">
+        <h1 className="break-words text-2xl font-semibold tracking-tight text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-3xl">
           EduGate Survey Questionnaire
         </h1>
         <p className="text-sm leading-6 text-[var(--color-text-muted)]">
@@ -237,8 +237,8 @@ export function SurveyForm() {
       </header>
 
       <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-[var(--color-text)] sm:text-xl">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="min-w-0 break-words text-lg font-semibold text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-xl">
             {CONSENT_CONTENT.title}
           </h2>
           {consentChoice === "agree" ? (
@@ -375,7 +375,7 @@ export function SurveyForm() {
                 className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:space-y-5 sm:p-5"
               >
                 <header className="space-y-2 border-b border-[var(--color-border)] pb-3">
-                  <h3 className="text-base font-semibold text-[var(--color-text)] sm:text-lg">
+                  <h3 className="break-words text-base font-semibold text-[var(--color-text)] [overflow-wrap:anywhere] sm:text-lg">
                     {section.title}
                   </h3>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-text-muted)]">
@@ -411,7 +411,7 @@ export function SurveyForm() {
                         <legend className="sr-only">{questionLegend}</legend>
                         <p
                           id={questionLabelId}
-                          className="break-words text-sm leading-6 text-[var(--color-text)]"
+                          className="break-words text-sm leading-6 text-[var(--color-text)] [overflow-wrap:anywhere]"
                         >
                           {questionLegend}
                         </p>
@@ -420,7 +420,7 @@ export function SurveyForm() {
                             Required: select one answer before submitting.
                           </p>
                         ) : null}
-                        <div className="mt-3 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3 sm:grid-cols-5">
+                        <div className="mt-3 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                           {LIKERT_OPTIONS.map((option) => {
                             const inputId = `${answerKey}-${option.value}`;
 
@@ -466,7 +466,7 @@ export function SurveyForm() {
                                 <span className="block text-[11px] font-semibold">
                                   {option.value}
                                 </span>
-                                <span className="block text-[10px] leading-4">
+                                <span className="block break-words text-[10px] leading-4 [overflow-wrap:anywhere]">
                                   {option.label}
                                 </span>
                               </label>
@@ -501,7 +501,7 @@ export function SurveyForm() {
                   <li key={item.answerKey}>
                     <a
                       href={`#${item.anchorId}`}
-                      className={`block rounded-lg border bg-[var(--color-surface)] px-3 py-2 text-xs leading-5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                      className={`block break-words rounded-lg border bg-[var(--color-surface)] px-3 py-2 text-xs leading-5 transition [overflow-wrap:anywhere] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                         hasSubmitValidationError
                           ? "border-[var(--color-error-border)] text-[var(--color-error-text)] hover:brightness-95 focus-visible:ring-[var(--color-error-text)]"
                           : "border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-border-strong)] focus-visible:ring-[var(--color-accent)]"
@@ -553,10 +553,10 @@ export function SurveyForm() {
         </button>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
-        <div className="mx-auto w-full max-w-5xl space-y-2">
+      <div className="fixed inset-x-0 bottom-0 z-40 overflow-x-hidden border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
+        <div className="mx-auto w-full min-w-0 max-w-5xl space-y-2">
           <p
-            className={`text-xs ${
+            className={`break-words text-xs [overflow-wrap:anywhere] ${
               isSurveyReady && hasMissingResponses
                 ? "font-medium text-[var(--color-error-text)]"
                 : "text-[var(--color-text-muted)]"

@@ -17,8 +17,8 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-3 py-4 text-[var(--color-text)] sm:px-4 sm:py-6 md:px-6 md:py-10">
-      <div className="mx-auto w-full max-w-5xl">
+    <main className="min-h-screen overflow-x-hidden bg-[var(--background)] px-3 py-4 text-[var(--color-text)] sm:px-4 sm:py-6 md:px-6 md:py-10">
+      <div className="mx-auto w-full min-w-0 max-w-5xl">
         <SurveyForm />
       </div>
     </main>
