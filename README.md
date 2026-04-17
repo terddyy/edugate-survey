@@ -68,6 +68,8 @@ npm run create:admin -- terddy03@gmail.com demo123
 This uses Supabase Admin API (`auth.admin.createUser`) and requires:
 - `NEXT_PUBLIC_SUPABASE_URL` (or `SUPABASE_URL`)
 - `SUPABASE_SERVICE_ROLE_KEY`
+- The script now also resets the password if the user already exists and ensures
+  the email is present in `public.admin_users`.
 
 After creating the account:
 - open `/admin`

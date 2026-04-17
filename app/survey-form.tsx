@@ -126,10 +126,18 @@ export function SurveyForm() {
   const missingQuestionMeta = missingKeysToDisplay
     .map((key) => questionMetaByKey.get(key))
     .filter((value): value is QuestionMeta => Boolean(value));
+  const firstMissingQuestion = missingQuestionMeta[0] ?? null;
 
   const isSurveyReady = consentChoice === "agree";
   const hasSubmitValidationError = validationError !== null && missingAnswerKeys.length > 0;
   const hasMissingResponses = computedMissingKeys.length > 0;
+
+  const scrollToQuestion = (anchorId: string) => {
+    document.getElementById(anchorId)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -153,10 +161,7 @@ export function SurveyForm() {
 
       const firstMissing = questionMetaByKey.get(missingKeys[0]);
       if (firstMissing) {
-        document.getElementById(firstMissing.anchorId)?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
+        scrollToQuestion(firstMissing.anchorId);
       }
 
       return;
@@ -332,6 +337,15 @@ export function SurveyForm() {
               <p className="mt-1 text-xs leading-5 text-[var(--color-error-text)]">
                 Unanswered questions are highlighted in red. Use the Incomplete items list to jump directly to each one.
               </p>
+              {firstMissingQuestion ? (
+                <button
+                  type="button"
+                  onClick={() => scrollToQuestion(firstMissingQuestion.anchorId)}
+                  className="mt-3 rounded-lg border border-[var(--color-error-border)] bg-[var(--color-surface)] px-3 py-2 text-xs font-medium text-[var(--color-error-text)] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-error-text)] focus-visible:ring-offset-2"
+                >
+                  Go to first missing question
+                </button>
+              ) : null}
             </section>
           ) : null}
 
@@ -487,7 +501,11 @@ export function SurveyForm() {
                   <li key={item.answerKey}>
                     <a
                       href={`#${item.anchorId}`}
-                      className="block rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs leading-5 text-[var(--color-text)] transition hover:border-[var(--color-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+                      className={`block rounded-lg border bg-[var(--color-surface)] px-3 py-2 text-xs leading-5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                        hasSubmitValidationError
+                          ? "border-[var(--color-error-border)] text-[var(--color-error-text)] hover:brightness-95 focus-visible:ring-[var(--color-error-text)]"
+                          : "border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-border-strong)] focus-visible:ring-[var(--color-accent)]"
+                      }`}
                     >
                       {item.sectionTitle} - Q{item.sectionQuestionNumber}
                     </a>
@@ -537,7 +555,13 @@ export function SurveyForm() {
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-surface)]/95 px-4 py-3 shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur md:hidden">
         <div className="mx-auto w-full max-w-5xl space-y-2">
-          <p className="text-xs text-[var(--color-text-muted)]">
+          <p
+            className={`text-xs ${
+              isSurveyReady && hasMissingResponses
+                ? "font-medium text-[var(--color-error-text)]"
+                : "text-[var(--color-text-muted)]"
+            }`}
+          >
             {isSurveyReady
               ? `${answeredCount}/${totalQuestions} answered • ${computedMissingKeys.length} missing`
               : "Select I Agree to continue and submit"}
