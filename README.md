@@ -47,6 +47,8 @@ Run the SQL migration in:
 
 ```text
 /migration/20260417_edugate_survey_v1.sql
+/migration/20260417_edugate_survey_v2_participant_type.sql
+/migration/20260417_edugate_survey_v3_respondent_role.sql
 ```
 
 This migration creates:
@@ -56,6 +58,8 @@ This migration creates:
   - anon/authenticated can insert survey responses.
   - only allowlisted admin users can select survey responses.
 - seeded allowlist entry for `terddy03@gmail.com`.
+- `participant_type` support with safe backfill (`pilot_tester` default for historical rows).
+- `respondent_role` support for `student | faculty | staff` with nullable legacy compatibility.
 
 ## Admin Account Bootstrap
 
@@ -81,9 +85,11 @@ After creating the account:
 ## Data Shape
 
 - `respondent_name`: optional text from respondent.
+- `respondent_role`: required by the app for new submissions (`student`, `faculty`, or `staff`); may be `null` for legacy rows.
+- `participant_type`: respondent classification (`pilot_tester` or `non_tester`).
 - `consent_agreed`: always `true` for successful submissions.
-- `answers`: JSON object keyed by section/question (`CCEE.q1` style keys represented as nested section objects).
-- `metadata`: includes survey version, Likert labels, and client timestamp.
+- `answers`: JSON object keyed by section/question (`CCEE.q1` style keys represented as nested section objects), scoped to the participant questionnaire variant.
+- `metadata`: includes survey version, respondent role, participant questionnaire variant, active section codes, Likert labels, and client timestamp.
 
 ## Supabase Client
 

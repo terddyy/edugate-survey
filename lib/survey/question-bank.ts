@@ -1,4 +1,6 @@
 export type LikertValue = 1 | 2 | 3 | 4 | 5;
+export type ParticipantType = "pilot_tester" | "non_tester";
+export type RespondentRole = "student" | "faculty" | "staff";
 
 export type SurveyQuestion = {
   id: string;
@@ -10,6 +12,17 @@ export type SurveySection = {
   title: string;
   responseFormat: string;
   questions: SurveyQuestion[];
+};
+
+export const PARTICIPANT_TYPE_LABELS: Record<ParticipantType, string> = {
+  pilot_tester: "Pilot Tester",
+  non_tester: "Non-Tester",
+};
+
+export const RESPONDENT_ROLE_LABELS: Record<RespondentRole, string> = {
+  student: "Student",
+  faculty: "Faculty",
+  staff: "Staff",
 };
 
 export const LIKERT_OPTIONS: { value: LikertValue; label: string }[] = [
@@ -163,3 +176,13 @@ export const SURVEY_SECTIONS: SurveySection[] = [
     ],
   },
 ];
+
+const NON_TESTER_SECTION_CODES = new Set<string>(["CCEE"]);
+
+export function getSectionsForParticipant(participantType: ParticipantType): SurveySection[] {
+  if (participantType === "pilot_tester") {
+    return SURVEY_SECTIONS;
+  }
+
+  return SURVEY_SECTIONS.filter((section) => NON_TESTER_SECTION_CODES.has(section.code));
+}

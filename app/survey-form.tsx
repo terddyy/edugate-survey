@@ -3,9 +3,13 @@
 import { FormEvent, useMemo, useState } from "react";
 import {
   CONSENT_CONTENT,
+  getSectionsForParticipant,
   LIKERT_OPTIONS,
   LikertValue,
-  SURVEY_SECTIONS,
+  PARTICIPANT_TYPE_LABELS,
+  ParticipantType,
+  RESPONDENT_ROLE_LABELS,
+  RespondentRole,
 } from "@/lib/survey/question-bank";
 
 type ConsentChoice = "agree" | "disagree" | null;
@@ -31,10 +35,10 @@ function getAnswerKey(sectionCode: string, questionId: string) {
   return `${sectionCode}.${questionId}`;
 }
 
-function buildNestedAnswers(answers: FlatAnswers) {
+function buildNestedAnswers(answers: FlatAnswers, sections: ReturnType<typeof getSectionsForParticipant>) {
   const nestedAnswers: Record<string, Record<string, LikertValue>> = {};
 
-  for (const section of SURVEY_SECTIONS) {
+  for (const section of sections) {
     const sectionAnswers: Record<string, LikertValue> = {};
 
     for (const question of section.questions) {
@@ -53,6 +57,8 @@ function buildNestedAnswers(answers: FlatAnswers) {
 }
 
 export function SurveyForm() {
+  const [respondentRole, setRespondentRole] = useState<RespondentRole | null>(null);
+  const [participantType, setParticipantType] = useState<ParticipantType | null>(null);
   const [consentChoice, setConsentChoice] = useState<ConsentChoice>(null);
   const [isConsentCollapsed, setIsConsentCollapsed] = useState(false);
   const [respondentName, setRespondentName] = useState("");
@@ -63,10 +69,15 @@ export function SurveyForm() {
   const [missingAnswerKeys, setMissingAnswerKeys] = useState<string[]>([]);
   const [startedAtClient] = useState(() => new Date().toISOString());
 
+  const activeSurveySections = useMemo(
+    () => (participantType ? getSectionsForParticipant(participantType) : []),
+    [participantType],
+  );
+
   const questionMeta = useMemo<QuestionMeta[]>(() => {
     const allQuestions: QuestionMeta[] = [];
 
-    for (const section of SURVEY_SECTIONS) {
+    for (const section of activeSurveySections) {
       section.questions.forEach((question, index) => {
         const answerKey = getAnswerKey(section.code, question.id);
 
@@ -83,7 +94,7 @@ export function SurveyForm() {
     }
 
     return allQuestions;
-  }, []);
+  }, [activeSurveySections]);
 
   const questionMetaByKey = useMemo(
     () => new Map(questionMeta.map((item) => [item.answerKey, item])),
@@ -102,7 +113,7 @@ export function SurveyForm() {
 
   const sectionProgress = useMemo(
     () =>
-      SURVEY_SECTIONS.map((section) => {
+      activeSurveySections.map((section) => {
         const answered = section.questions.reduce((count, question) => {
           const key = getAnswerKey(section.code, question.id);
           return answers[key] ? count + 1 : count;
@@ -114,7 +125,7 @@ export function SurveyForm() {
           total: section.questions.length,
         };
       }),
-    [answers],
+    [activeSurveySections, answers],
   );
 
   const computedMissingKeys = useMemo(
@@ -128,7 +139,8 @@ export function SurveyForm() {
     .filter((value): value is QuestionMeta => Boolean(value));
   const firstMissingQuestion = missingQuestionMeta[0] ?? null;
 
-  const isSurveyReady = consentChoice === "agree";
+  const isSurveyReady =
+    consentChoice === "agree" && participantType !== null && respondentRole !== null;
   const hasSubmitValidationError = validationError !== null && missingAnswerKeys.length > 0;
   const hasMissingResponses = computedMissingKeys.length > 0;
 
@@ -146,7 +158,13 @@ export function SurveyForm() {
     setSubmitError(null);
 
     if (!isSurveyReady) {
-      setValidationError("You must agree to the consent form before submitting.");
+      setValidationError(
+        respondentRole === null
+          ? "Please select your respondent role before submitting."
+          : participantType === null
+          ? "Please select your participant type before submitting."
+          : "You must agree to the consent form before submitting.",
+      );
       return;
     }
 
@@ -170,17 +188,22 @@ export function SurveyForm() {
     setSubmitState("submitting");
 
     try {
-      const nestedAnswers = buildNestedAnswers(answers);
+      const nestedAnswers = buildNestedAnswers(answers, activeSurveySections);
       const normalizedName = respondentName.trim();
       const submittedAtClient = new Date().toISOString();
 
       const { supabase } = await import("@/lib/supabase/client");
       const { error } = await supabase.from("survey_responses").insert({
         respondent_name: normalizedName.length > 0 ? normalizedName : null,
+        respondent_role: respondentRole,
+        participant_type: participantType,
         consent_agreed: true,
         answers: nestedAnswers,
         metadata: {
           surveyVersion: "v1",
+          respondentRole,
+          questionnaireVariant: participantType,
+          activeSectionCodes: activeSurveySections.map((section) => section.code),
           scale: LIKERT_OPTIONS.map((option) => ({
             value: option.value,
             label: option.label,
@@ -235,6 +258,67 @@ export function SurveyForm() {
           Please answer all items honestly. Name is optional.
         </p>
       </header>
+
+      <section className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-[var(--color-text)] sm:text-xl">Part A · Respondent Role</h2>
+        <p className="text-sm leading-6 text-[var(--color-text-muted)]">
+          Select the option that best describes your role in the school.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-3">
+          {(Object.entries(RESPONDENT_ROLE_LABELS) as [RespondentRole, string][]).map(
+            ([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setRespondentRole(value);
+                  setValidationError(null);
+                }}
+                className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 ${
+                  respondentRole === value
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                    : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:border-[var(--color-border-strong)]"
+                }`}
+              >
+                {label}
+              </button>
+            ),
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4 sm:p-5">
+        <h2 className="text-lg font-semibold text-[var(--color-text)] sm:text-xl">Part B · Participant Type</h2>
+        <p className="text-sm leading-6 text-[var(--color-text-muted)]">
+          Select your questionnaire type before answering the survey items.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {(Object.entries(PARTICIPANT_TYPE_LABELS) as [ParticipantType, string][]).map(
+            ([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  const shouldReset = participantType !== value;
+                  setParticipantType(value);
+                  if (shouldReset) {
+                    setAnswers({});
+                    setMissingAnswerKeys([]);
+                  }
+                  setValidationError(null);
+                }}
+                className={`min-h-11 rounded-lg border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2 ${
+                  participantType === value
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)] text-white"
+                    : "border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text)] hover:border-[var(--color-border-strong)]"
+                }`}
+              >
+                {label}
+              </button>
+            ),
+          )}
+        </div>
+      </section>
 
       <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -323,6 +407,12 @@ export function SurveyForm() {
             <p className="text-xs leading-5 text-[var(--color-text-muted)]">
               Scale: 1 = Strongly Disagree, 5 = Strongly Agree
             </p>
+            <p className="text-xs leading-5 text-[var(--color-text-muted)]">
+              Respondent Role: {respondentRole ? RESPONDENT_ROLE_LABELS[respondentRole] : "Not selected"}
+            </p>
+            <p className="text-xs leading-5 text-[var(--color-text-muted)]">
+              Participant Type: {participantType ? PARTICIPANT_TYPE_LABELS[participantType] : "Not selected"}
+            </p>
           </section>
 
           {hasSubmitValidationError ? (
@@ -366,7 +456,7 @@ export function SurveyForm() {
             />
           </section>
 
-          {SURVEY_SECTIONS.map((section) => {
+          {activeSurveySections.map((section) => {
             const progress = sectionProgress.find((item) => item.sectionCode === section.code);
 
             return (
@@ -542,7 +632,11 @@ export function SurveyForm() {
             ? hasMissingResponses
               ? `${computedMissingKeys.length} incomplete response(s) - please answer all before submitting`
               : "All questions answered - ready to submit"
-            : "Agree to consent form to unlock survey submission"}
+            : respondentRole === null
+              ? "Select respondent role to unlock survey questions"
+              : participantType === null
+              ? "Select participant type to unlock survey questions"
+              : "Agree to consent form to unlock survey submission"}
         </p>
         <button
           type="submit"
@@ -564,7 +658,11 @@ export function SurveyForm() {
           >
             {isSurveyReady
               ? `${answeredCount}/${totalQuestions} answered • ${computedMissingKeys.length} missing`
-              : "Select I Agree to continue and submit"}
+              : respondentRole === null
+                ? "Select respondent role to continue"
+                : participantType === null
+                ? "Select participant type to continue"
+                : "Select I Agree to continue and submit"}
           </p>
           <button
             type="submit"

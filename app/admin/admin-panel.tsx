@@ -4,8 +4,13 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import {
+  getSectionsForParticipant,
   LIKERT_OPTIONS,
   LikertValue,
+  PARTICIPANT_TYPE_LABELS,
+  ParticipantType,
+  RESPONDENT_ROLE_LABELS,
+  RespondentRole,
   SURVEY_SECTIONS,
 } from "@/lib/survey/question-bank";
 
@@ -13,6 +18,8 @@ type SurveyResponse = {
   id: string;
   created_at: string;
   respondent_name: string | null;
+  respondent_role: RespondentRole | null;
+  participant_type: ParticipantType | null;
   answers: unknown;
   metadata: Record<string, unknown> | null;
 };
@@ -75,6 +82,38 @@ const QUESTION_CATALOG: QuestionCatalogItem[] = SURVEY_SECTIONS.flatMap((section
 
 const SECTION_LOOKUP = new Map(SURVEY_SECTIONS.map((section) => [section.code, section]));
 const QUESTION_LOOKUP = new Map(QUESTION_CATALOG.map((question) => [question.key, question]));
+
+function getParticipantType(response: SurveyResponse): ParticipantType {
+  if (response.participant_type === "non_tester") {
+    return "non_tester";
+  }
+
+  return "pilot_tester";
+}
+
+function getRespondentRole(response: SurveyResponse): RespondentRole | null {
+  if (
+    response.respondent_role === "student" ||
+    response.respondent_role === "faculty" ||
+    response.respondent_role === "staff"
+  ) {
+    return response.respondent_role;
+  }
+
+  return null;
+}
+
+function getQuestionCatalogForParticipant(participantType: ParticipantType): QuestionCatalogItem[] {
+  return getSectionsForParticipant(participantType).flatMap((section) =>
+    section.questions.map((question) => ({
+      key: `${section.code}.${question.id}`,
+      sectionCode: section.code,
+      sectionTitle: section.title,
+      questionId: question.id,
+      questionText: question.text,
+    })),
+  );
+}
 
 function normalizeLikertValue(value: unknown): LikertValue | null {
   const parsed =
@@ -185,9 +224,10 @@ function extractAnswerValue(response: SurveyResponse, sectionCode: string, quest
   return normalizeLikertValue(rawValue);
 }
 function getResponseAnsweredCount(response: SurveyResponse) {
+  const participantCatalog = getQuestionCatalogForParticipant(getParticipantType(response));
   let answered = 0;
 
-  for (const item of QUESTION_CATALOG) {
+  for (const item of participantCatalog) {
     if (extractAnswerValue(response, item.sectionCode, item.questionId) !== null) {
       answered += 1;
     }
@@ -197,10 +237,11 @@ function getResponseAnsweredCount(response: SurveyResponse) {
 }
 
 function getResponseMean(response: SurveyResponse) {
+  const participantCatalog = getQuestionCatalogForParticipant(getParticipantType(response));
   let sum = 0;
   let count = 0;
 
-  for (const item of QUESTION_CATALOG) {
+  for (const item of participantCatalog) {
     const value = extractAnswerValue(response, item.sectionCode, item.questionId);
     if (value !== null) {
       sum += value;
@@ -222,6 +263,8 @@ export function AdminPanel() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [participantFilter, setParticipantFilter] = useState<"all" | ParticipantType>("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | RespondentRole>("all");
   const [sectionFilter, setSectionFilter] = useState<string>("all");
   const [questionFilter, setQuestionFilter] = useState<string>("all");
 
@@ -231,7 +274,7 @@ export function AdminPanel() {
 
     const { data, error } = await supabase
       .from("survey_responses")
-      .select("id, created_at, respondent_name, answers, metadata")
+      .select("id, created_at, respondent_name, respondent_role, participant_type, answers, metadata")
       .order("created_at", { ascending: false });
 
     setIsLoadingResponses(false);
@@ -284,6 +327,14 @@ export function AdminPanel() {
     const keyword = searchTerm.trim().toLowerCase();
 
     return responses.filter((response) => {
+      if (participantFilter !== "all" && getParticipantType(response) !== participantFilter) {
+        return false;
+      }
+
+      if (roleFilter !== "all" && getRespondentRole(response) !== roleFilter) {
+        return false;
+      }
+
       if (!keyword) {
         return true;
       }
@@ -291,7 +342,7 @@ export function AdminPanel() {
       const displayName = getDisplayName(response).toLowerCase();
       return displayName.includes(keyword);
     });
-  }, [responses, searchTerm]);
+  }, [participantFilter, responses, roleFilter, searchTerm]);
 
   const effectiveSectionCode = useMemo(() => {
     if (resolvedQuestionFilter !== "all") {
@@ -416,6 +467,8 @@ export function AdminPanel() {
 
   const clearFilters = () => {
     setSearchTerm("");
+    setParticipantFilter("all");
+    setRoleFilter("all");
     setSectionFilter("all");
     setQuestionFilter("all");
   };
@@ -590,7 +643,7 @@ export function AdminPanel() {
         </article>
       </section>
       <section className="sticky top-2 z-30 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/95 p-4 shadow-sm backdrop-blur">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <div className="xl:col-span-2">
             <label htmlFor="search-respondent" className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
               Search respondent
@@ -603,6 +656,37 @@ export function AdminPanel() {
               placeholder="Search by respondent name"
               className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
             />
+          </div>
+          <div>
+            <label htmlFor="participant-filter" className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+              Participant Type
+            </label>
+            <select
+              id="participant-filter"
+              value={participantFilter}
+              onChange={(event) => setParticipantFilter(event.target.value as "all" | ParticipantType)}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+            >
+              <option value="all">All Participants</option>
+              <option value="pilot_tester">{PARTICIPANT_TYPE_LABELS.pilot_tester}</option>
+              <option value="non_tester">{PARTICIPANT_TYPE_LABELS.non_tester}</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="role-filter" className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
+              Respondent Role
+            </label>
+            <select
+              id="role-filter"
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value as "all" | RespondentRole)}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+            >
+              <option value="all">All Roles</option>
+              <option value="student">{RESPONDENT_ROLE_LABELS.student}</option>
+              <option value="faculty">{RESPONDENT_ROLE_LABELS.faculty}</option>
+              <option value="staff">{RESPONDENT_ROLE_LABELS.staff}</option>
+            </select>
           </div>
           <div>
             <label htmlFor="section-filter" className="mb-1 block text-xs font-medium text-[var(--color-text-muted)]">
@@ -757,6 +841,9 @@ export function AdminPanel() {
             {filteredResponses.map((response) => {
               const answeredCount = getResponseAnsweredCount(response);
               const responseMean = getResponseMean(response);
+              const participantType = getParticipantType(response);
+              const respondentRole = getRespondentRole(response);
+              const expectedCount = getQuestionCatalogForParticipant(participantType).length;
 
               return (
                 <article key={response.id} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
@@ -767,16 +854,22 @@ export function AdminPanel() {
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2.5 py-1 text-[var(--color-text)]">
+                        Role: {respondentRole ? RESPONDENT_ROLE_LABELS[respondentRole] : "Unspecified"}
+                      </span>
+                      <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2.5 py-1 text-[var(--color-text)]">
+                        Type: {PARTICIPANT_TYPE_LABELS[participantType]}
+                      </span>
+                      <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2.5 py-1 text-[var(--color-text)]">
                         Mean: {formatMean(responseMean)}
                       </span>
                       <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface-muted)] px-2.5 py-1 text-[var(--color-text)]">
-                        Answered: {answeredCount}/{QUESTION_CATALOG.length}
+                        Answered: {answeredCount}/{expectedCount}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                    {SURVEY_SECTIONS.map((section) => {
+                    {getSectionsForParticipant(participantType).map((section) => {
                       let sectionAnswered = 0;
                       for (const question of section.questions) {
                         if (extractAnswerValue(response, section.code, question.id) !== null) {
