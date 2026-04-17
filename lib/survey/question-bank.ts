@@ -29,7 +29,7 @@ export const CONSENT_CONTENT = {
   voluntary:
     "Your participation is voluntary. You may stop at any time before submitting your responses without penalty.",
   contact:
-    "For questions about this survey, please contact: [Researcher Name], [Department/Program], [Email Address].",
+    "For questions about this survey, please contact: Terd Imogen Inocentes, BS Computer Science, terd@zentariph.com.",
   agreement:
     "By selecting I Agree, you confirm that you have read and understood this consent information and voluntarily agree to participate.",
 };
@@ -163,4 +163,3 @@ export const SURVEY_SECTIONS: SurveySection[] = [
     ],
   },
 ];
-
