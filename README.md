@@ -84,7 +84,7 @@ After creating the account:
 
 ## Data Shape
 
-- `respondent_name`: optional text from respondent.
+- `respondent_name`: always `null` (responses are anonymous).
 - `respondent_role`: required by the app for new submissions (`student`, `faculty`, or `staff`); may be `null` for legacy rows.
 - `participant_type`: respondent classification (`pilot_tester` or `non_tester`).
 - `consent_agreed`: always `true` for successful submissions.
@@ -94,3 +94,4 @@ After creating the account:
 ## Supabase Client
 
 Reusable browser client is located at `lib/supabase/client.ts`.
+

@@ -61,7 +61,6 @@ export function SurveyForm() {
   const [participantType, setParticipantType] = useState<ParticipantType | null>(null);
   const [consentChoice, setConsentChoice] = useState<ConsentChoice>(null);
   const [isConsentCollapsed, setIsConsentCollapsed] = useState(false);
-  const [respondentName, setRespondentName] = useState("");
   const [answers, setAnswers] = useState<FlatAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -189,12 +188,11 @@ export function SurveyForm() {
 
     try {
       const nestedAnswers = buildNestedAnswers(answers, activeSurveySections);
-      const normalizedName = respondentName.trim();
       const submittedAtClient = new Date().toISOString();
 
       const { supabase } = await import("@/lib/supabase/client");
       const { error } = await supabase.from("survey_responses").insert({
-        respondent_name: normalizedName.length > 0 ? normalizedName : null,
+        respondent_name: null,
         respondent_role: respondentRole,
         participant_type: participantType,
         consent_agreed: true,
@@ -255,7 +253,7 @@ export function SurveyForm() {
           EduGate Survey Questionnaire
         </h1>
         <p className="text-sm leading-6 text-[var(--color-text-muted)]">
-          Please answer all items honestly. Name is optional.
+          Please answer all items honestly. Responses are collected anonymously.
         </p>
       </header>
 
@@ -438,23 +436,6 @@ export function SurveyForm() {
               ) : null}
             </section>
           ) : null}
-
-          <section className="space-y-2 rounded-2xl border border-[var(--color-border)] p-4 sm:p-5">
-            <label
-              htmlFor="respondent-name"
-              className="text-sm font-medium text-[var(--color-text)]"
-            >
-              Name (Optional)
-            </label>
-            <input
-              id="respondent-name"
-              type="text"
-              value={respondentName}
-              onChange={(event) => setRespondentName(event.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
-              placeholder="Enter your name (optional)"
-            />
-          </section>
 
           {activeSurveySections.map((section) => {
             const progress = sectionProgress.find((item) => item.sectionCode === section.code);
@@ -676,3 +657,4 @@ export function SurveyForm() {
     </form>
   );
 }
+

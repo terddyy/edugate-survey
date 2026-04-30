@@ -653,7 +653,7 @@ export function AdminPanel() {
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by respondent name"
+              placeholder="Search responses"
               className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-text)] outline-none transition focus:border-[var(--color-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
             />
           </div>
@@ -903,3 +903,4 @@ export function AdminPanel() {
     </section>
   );
 }
+
